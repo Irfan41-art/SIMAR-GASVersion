@@ -85,14 +85,29 @@ export default function SheetsIntegration() {
       }
     } catch (err: any) {
       console.error('Google Account authorization error details:', err);
-      const isPopupBlocked = err.message && (
-        err.message.includes('popup-blocked') || 
-        err.message.includes('popup blocked') || 
-        err.message.includes('cancelled') ||
-        err.message.includes('closed by user')
-      );
+      const errMsg = err.message || '';
+      const isPopupBlocked = errMsg.includes('popup-blocked') || 
+        errMsg.includes('popup blocked') || 
+        errMsg.includes('cancelled') ||
+        errMsg.includes('closed by user');
       
-      if (isPopupBlocked) {
+      const isUnauthorizedDomain = errMsg.includes('unauthorized-domain') || 
+        errMsg.includes('unauthorized domain');
+
+      const isInvalidApiKey = errMsg.includes('api-key-not-valid') ||
+        errMsg.includes('api key not valid');
+
+      const isOperationNotAllowed = errMsg.includes('operation-not-allowed') ||
+        errMsg.includes('operation not allowed');
+      
+      if (isUnauthorizedDomain) {
+        const currentDomain = window.location.hostname;
+        setErrorMessage(`Otorisasi Gagal (auth/unauthorized-domain): Domain "${currentDomain}" belum terdaftar di Authorized Domains Firebase Anda. Sila buka Firebase Console -> Authentication -> Settings -> Authorized Domains, lalu tambahkan domain "${currentDomain}" ke dalam daftar.`);
+      } else if (isInvalidApiKey) {
+        setErrorMessage(`Otorisasi Gagal (auth/api-key-not-valid): API Key Firebase yang terdapat di firebase-applet-config.json tidak valid atau tidak aktif. Sila buka Firebase Console -> Project Settings (Ikon Gerigi) -> General, salin "Web API Key" Anda dengan benar, lalu perbarui nilai "apiKey" di file berkas /firebase-applet-config.json.`);
+      } else if (isOperationNotAllowed) {
+        setErrorMessage(`Otorisasi Gagal (auth/operation-not-allowed): Cara masuk (Sign-in Method) Google belum diaktifkan di Firebase Console Anda. Sila buka Firebase Console -> Authentication -> Sign-in Method, lalu klik "Add new provider", pilih "Google", aktifkan (enable), masukkan email dukungan proyek Anda, dan klik Simpan (Save).`);
+      } else if (isPopupBlocked) {
         setErrorMessage('Jendela Otorisasi Diblokir atau Ditutup! Sila klik "Buka Aplikasi di Tab Baru" di sudut kanan atas peramban Anda untuk melakukan otorisasi di luar iframe sandboxed, atau tempel access token Anda secara manual di menu "Token Manual" di bawah.');
       } else {
         setErrorMessage(`Otorisasi gagal: ${err.message || 'Error tidak diketahui'}`);
