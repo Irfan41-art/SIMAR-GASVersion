@@ -39,6 +39,8 @@ export default function SheetsIntegration() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [customSheetId, setCustomSheetId] = useState('');
+  const [showManualToken, setShowManualToken] = useState(false);
+  const [manualTokenInput, setManualTokenInput] = useState('');
   const [syncStats, setSyncStats] = useState({
     users: 0,
     students: 0,
@@ -82,7 +84,19 @@ export default function SheetsIntegration() {
         setTimeout(() => setSuccessMessage(null), 3500);
       }
     } catch (err: any) {
-      setErrorMessage(`Otorisasi gagal: ${err.message || 'Error tidak diketahui'}`);
+      console.error('Google Account authorization error details:', err);
+      const isPopupBlocked = err.message && (
+        err.message.includes('popup-blocked') || 
+        err.message.includes('popup blocked') || 
+        err.message.includes('cancelled') ||
+        err.message.includes('closed by user')
+      );
+      
+      if (isPopupBlocked) {
+        setErrorMessage('Jendela Otorisasi Diblokir atau Ditutup! Sila klik "Buka Aplikasi di Tab Baru" di sudut kanan atas peramban Anda untuk melakukan otorisasi di luar iframe sandboxed, atau tempel access token Anda secara manual di menu "Token Manual" di bawah.');
+      } else {
+        setErrorMessage(`Otorisasi gagal: ${err.message || 'Error tidak diketahui'}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -384,14 +398,56 @@ export default function SheetsIntegration() {
             )}
           </div>
 
-          <button
-            onClick={handleLinkAccount}
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-widest text-[10px] py-4 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
-          >
-            {loading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
-            Hubungkan Akun Google
-          </button>
+          <div className="space-y-4">
+            <button
+              onClick={handleLinkAccount}
+              disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-widest text-[10px] py-4 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+            >
+              {loading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+              Hubungkan Akun Google
+            </button>
+
+            <div className="pt-2 border-t border-white/5">
+              <button
+                type="button"
+                onClick={() => setShowManualToken(!showManualToken)}
+                className="w-full text-center text-slate-400 hover:text-white text-[10px] uppercase font-black tracking-widest flex items-center justify-center gap-1.5 py-2 transition-all"
+              >
+                {showManualToken ? 'Sembunyikan Opsi Manual' : 'Bypass / Token Manual 🔑'}
+              </button>
+              
+              {showManualToken && (
+                <div className="mt-3 p-4 bg-slate-950/60 rounded-xl border border-white/5 space-y-3">
+                  <p className="text-[9px] text-slate-500 font-bold uppercase leading-relaxed">
+                    Tempelkan Google OAuth Access Token di sini jika popup terblokir oleh peramban atau iframe:
+                  </p>
+                  <input
+                    type="password"
+                    value={manualTokenInput}
+                    onChange={(e) => setManualTokenInput(e.target.value)}
+                    placeholder="ya29.a0Acvmd1..."
+                    className="w-full px-3 py-2 bg-slate-900 border border-white/5 rounded-lg text-white text-xs font-mono outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (manualTokenInput.trim()) {
+                        setSheetsAccessToken(manualTokenInput.trim());
+                        setSuccessMessage('Berhasil menyimpan Google Access Token secara manual!');
+                        setManualTokenInput('');
+                        setShowManualToken(false);
+                        setTimeout(() => setSuccessMessage(null), 3500);
+                      }
+                    }}
+                    className="w-full bg-blue-600 hover:bg-blue-500 text-white text-[9px] font-black uppercase tracking-widest py-2 rounded-lg"
+                  >
+                    Simpan Token
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Step 2: Spreadsheet Linking */}
