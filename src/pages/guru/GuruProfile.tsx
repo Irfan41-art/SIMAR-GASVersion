@@ -33,23 +33,45 @@ export default function GuruProfile() {
 
     try {
       const user = auth.currentUser;
-      if (!user) return;
+      const targetUid = profile?.uid || user?.uid;
 
-      await updateDoc(doc(db, 'users', user.uid), {
+      if (!targetUid) {
+        throw new Error('Identitas pengguna tidak ditemukan.');
+      }
+
+      // Update Firestore User
+      await updateDoc(doc(db, 'users', targetUid), {
         name: formData.name,
         photoURL: formData.photoURL
       });
 
-      await updateProfile(user, {
-        displayName: formData.name,
-        photoURL: formData.photoURL
-      });
+      // Update Auth Profile if Firebase Auth user is active
+      if (user) {
+        try {
+          await updateProfile(user, {
+            displayName: formData.name,
+            photoURL: formData.photoURL
+          });
+        } catch (authErr) {
+          console.warn('Identity provider sync skipped:', authErr);
+        }
+      }
 
+      // Update Password if provided
       if (formData.newPassword) {
-        await updatePassword(user, formData.newPassword);
-        await updateDoc(doc(db, 'users', user.uid), {
+        // Update in Local/Firestore Database
+        await updateDoc(doc(db, 'users', targetUid), {
           password: formData.newPassword
         });
+
+        // Update Firebase Auth password if active
+        if (user) {
+          try {
+            await updatePassword(user, formData.newPassword);
+          } catch (authErr) {
+            console.warn('Auth provider password Sync skipped:', authErr);
+          }
+        }
       }
 
       setMessage({ type: 'success', text: 'Profil berhasil diperbarui!' });
