@@ -1,9 +1,8 @@
 {
-  "projectId": "gen-lang-client-0259041758",
-  "appId": "1:537591529466:web:bd665dc7ed97212eecae43",
-  "apiKey": "AIzaSyBxoyWK4gvh9Ro-aS3U1JHJ91w8fHhCzow",
-  "authDomain": "gen-lang-client-0259041758.firebaseapp.com",
-  "storageBucket": "gen-lang-client-0259041758.firebasestorage.app",
-  "messagingSenderId": "537591529466",
-  "measurementId": ""
+  "apiKey": "AIzaSyCcH0URTyyi-vBeosJbGqBzlUxlIv86abs",
+  "authDomain": "simar-gasversion.firebaseapp.com",
+  "projectId": "simar-gasversion",
+  "storageBucket": "simar-gasversion.firebasestorage.app",
+  "messagingSenderId": "360051461356",
+  "appId": "1:360051461356:web:e7cd646ca0d5d9151869c9"
 }
