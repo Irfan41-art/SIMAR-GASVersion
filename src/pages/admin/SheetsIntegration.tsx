@@ -37,7 +37,93 @@ export default function SheetsIntegration() {
 
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<React.ReactNode | null>(null);
+
+  const getFriendlyErrorMessage = (err: any): React.ReactNode => {
+    const rawMsg = err.message || '';
+    
+    // Check if it's a JSON string from Google API
+    try {
+      const parsed = JSON.parse(rawMsg);
+      if (parsed && parsed.error) {
+        const apiMsg = parsed.error.message || '';
+        
+        // Google Sheets API / Drive API disabled
+        if (apiMsg.includes('has not been used in project') || apiMsg.includes('disabled')) {
+          const urlMatch = apiMsg.match(/https:\/\/console\.[^\s]+/);
+          const activationUrl = urlMatch ? urlMatch[0].replace(/[.,;)]+$/, '') : null;
+          
+          return (
+            <div className="space-y-2 text-left normal-case tracking-normal">
+              <p className="font-black text-red-400 text-xs sm:text-sm uppercase tracking-wider flex items-center gap-1.5 leading-none">
+                <AlertTriangle size={16} />
+                Layanan Google API Belum Aktif
+              </p>
+              <p className="text-slate-300 text-[11px] font-medium leading-relaxed">
+                Google Sheets API atau Google Drive API belum diaktifkan di konsol Google Cloud untuk project Firebase Anda (<code className="text-white bg-slate-950 px-1 py-0.5 rounded font-mono text-[10px]">simar-gasversion-2ae59</code>).
+              </p>
+              {activationUrl && (
+                <div className="pt-1.5">
+                  <a 
+                    href={activationUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-[9px] font-black uppercase tracking-widest rounded-lg transition-all"
+                  >
+                    <ExternalLink size={12} />
+                    Aktifkan Google API Sekarang
+                  </a>
+                </div>
+              )}
+            </div>
+          );
+        }
+        
+        // Invalid credentials or permission denied
+        if (parsed.error.status === 'PERMISSION_DENIED') {
+          return (
+            <div className="space-y-1 text-left normal-case tracking-normal text-[11px] font-medium">
+              <p className="font-black text-red-400 text-xs uppercase tracking-wider flex items-center gap-1 leading-none">
+                <AlertTriangle size={14} />
+                Izin Akses Ditolak (403 Forbidden)
+              </p>
+              <p className="text-slate-300 leading-relaxed">
+                Aplikasi tidak memiliki izin untuk mengakses spreadsheet atau folder Drive ini. Pastikan Anda telah mengadaptasi setelan persetujuan (Consent Screen) di Firebase Google Auth Anda dan memberikan izin penuh.
+              </p>
+            </div>
+          );
+        }
+
+        return (
+          <div className="space-y-1 text-left normal-case tracking-normal text-[11px] font-medium">
+            <p className="font-black text-red-400 text-xs uppercase tracking-wider flex items-center gap-1 leading-none">Error dari Google API ({parsed.error.code || 400})</p>
+            <p className="text-slate-300 italic leading-relaxed">{apiMsg}</p>
+          </div>
+        );
+      }
+    } catch {
+      // Not a JSON string
+    }
+
+    // Standard non-JSON errors
+    const errMsg = rawMsg || 'Terjadi kesalahan tidak diketahui.';
+    
+    // Unauthorized domain
+    if (errMsg.includes('unauthorized-domain') || errMsg.includes('unauthorized domain')) {
+      const currentDomain = window.location.hostname;
+      return (
+        <div className="space-y-1 text-left normal-case tracking-normal text-[11px] font-medium">
+          <p className="font-black text-red-400 text-xs uppercase tracking-wider flex items-center gap-1 leading-none">Domain Belum Diizinkan (auth/unauthorized-domain)</p>
+          <p className="text-slate-300 leading-relaxed">
+            Domain <code className="text-white bg-slate-950 px-1 py-0.5 rounded font-mono">{currentDomain}</code> belum didaftarkan di Authorized Domains Firebase Console Anda. Sila daftarkan dahulu.
+          </p>
+        </div>
+      );
+    }
+
+    return errMsg;
+  };
+
   const [customSheetId, setCustomSheetId] = useState('');
   const [showManualToken, setShowManualToken] = useState(false);
   const [manualTokenInput, setManualTokenInput] = useState('');
@@ -140,7 +226,7 @@ export default function SheetsIntegration() {
         setErrorMessage('Gagal membuat Spreadsheet. Pastikan izin akses Drive / Sheets telah diberikan.');
       }
     } catch (err: any) {
-      setErrorMessage(`Error: ${err.message || 'Gagal memproses pembuatan file'}`);
+      setErrorMessage(getFriendlyErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -175,7 +261,7 @@ export default function SheetsIntegration() {
         setErrorMessage('Spreadsheet ID tidak valid atau sheet format (Settings, Users, dll) tidak lengkap.');
       }
     } catch (err: any) {
-      setErrorMessage(`Format tidak cocok: ${err.message}`);
+      setErrorMessage(getFriendlyErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -231,7 +317,7 @@ export default function SheetsIntegration() {
         setErrorMessage('Gagal mengunggah data. Silakan coba otorisasi ulang.');
       }
     } catch (err: any) {
-      setErrorMessage(`Penulisan data gagal: ${err.message}`);
+      setErrorMessage(getFriendlyErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -323,7 +409,7 @@ export default function SheetsIntegration() {
       setSuccessMessage('Seluruh basis data SIMAR berhasil diselaraskan dari Google Sheets!');
       fetchLocalStats();
     } catch (err: any) {
-      setErrorMessage(`Import Error: ${err.message || 'Format parser baris bermasalah'}`);
+      setErrorMessage(getFriendlyErrorMessage(err));
     } finally {
       setLoading(false);
     }

@@ -13,14 +13,20 @@ export async function checkSpreadsheetStructure(accessToken: string, spreadsheet
     const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    if (!res.ok) return false;
+    if (!res.ok) {
+      if (res.status === 403 || res.status === 401) {
+        const errText = await res.text();
+        throw new Error(errText);
+      }
+      return false;
+    }
     const data = await res.json();
     const sheetTitles = data.sheets?.map((s: any) => s.properties?.title) || [];
     const required = ['Settings', 'Users', 'Students', 'Attendance', 'Grades', 'Journals'];
     return required.every(t => sheetTitles.includes(t));
   } catch (error) {
     console.error('Error checking spreadsheet structure:', error);
-    return false;
+    throw error;
   }
 }
 
@@ -51,7 +57,7 @@ export async function createDatabaseSpreadsheet(accessToken: string, schoolName:
     if (!response.ok) {
       const errText = await response.text();
       console.error('Create spreadsheet failed:', errText);
-      throw new Error(`Failed to create spreadsheet: ${errText}`);
+      throw new Error(errText);
     }
 
     const data = await response.json();
@@ -64,7 +70,7 @@ export async function createDatabaseSpreadsheet(accessToken: string, schoolName:
     return { spreadsheetId, spreadsheetUrl };
   } catch (err) {
     console.error('Failed to create database spreadsheet:', err);
-    return null;
+    throw err;
   }
 }
 
@@ -213,10 +219,15 @@ export async function syncDataToSheets(
       })
     });
 
-    return res.ok;
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(errText);
+    }
+
+    return true;
   } catch (error) {
     console.error('Error syncing data to Google Sheets:', error);
-    return false;
+    throw error;
   }
 }
 
@@ -260,8 +271,9 @@ export async function importDataFromSheets(
     });
 
     if (!res.ok) {
-      console.error('Batch get values from Sheets failed:', await res.text());
-      return null;
+      const errText = await res.text();
+      console.error('Batch get values from Sheets failed:', errText);
+      throw new Error(errText);
     }
 
     const data = await res.json();
@@ -372,6 +384,6 @@ export async function importDataFromSheets(
     return result;
   } catch (error) {
     console.error('Error importing data from Google Sheets:', error);
-    return null;
+    throw error;
   }
 }
