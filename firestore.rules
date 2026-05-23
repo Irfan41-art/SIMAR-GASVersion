@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // --- HELPERS ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+        (exists(/databases/$(database)/documents/users/admin) && get(/databases/$(database)/documents/users/admin).data.uid == request.auth.uid)
+      );
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && (request.auth.uid == userId || (exists(/databases/$(database)/documents/users/$(userId)) && get(/databases/$(database)/documents/users/$(userId)).data.uid == request.auth.uid));
+    }
+
+    // 1. DEFAULT DENY
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- COLLECTIONS ---
+
+    // School Settings (Public Read)
+    match /settings/school {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Users
+    // Profiles are semi-public for stats and identification
+    match /users/{userId} {
+      allow read: if true; 
+      allow create: if isAdmin() || isSignedIn(); // Allow self-creation/migration
+      allow update: if isAdmin() || isOwner(userId);
+      allow delete: if isAdmin();
+    }
+
+    // Students
+    match /students/{studentId} {
+      allow read: if true; 
+      allow create: if isAdmin() || (isSignedIn());
+      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.teacherId == request.auth.uid);
+    }
+
+    // Attendance
+    match /attendance/{attendanceId} {
+      allow read: if true; 
+      allow create: if isAdmin() || (isSignedIn());
+      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.teacherId == request.auth.uid);
+    }
+
+    // Grades
+    match /grades/{gradeId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin() || (isSignedIn());
+      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.teacherId == request.auth.uid);
+    }
+
+    // Journals
+    match /journals/{journalId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin() || (isSignedIn());
+      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.teacherId == request.auth.uid);
+    }
+  }
+}

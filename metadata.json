@@ -1,0 +1,8 @@
+{
+  "name": "SIMAR - SD Negeri 4 Pusungi_GAS Version",
+  "description": "Sistem Informasi Manajemen Administrasi Guru (SIMAR) untuk SD Negeri 4 Pusungi, menyediakan fitur pengelolaan data murid, guru, absensi, penilaian, dan jurnal mengajar.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
